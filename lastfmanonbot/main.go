@@ -35,7 +35,15 @@ func GetNowPlaying(user string) string {
 
 	nowPlaying, _ := api.User.GetRecentTracks(userMap)
 	for _, v := range nowPlaying.Tracks {
-		nowPlayingTrack = fmt.Sprintf("I'm listening to:\n%s - %s [%s]", v.Artist.Name, v.Name, v.Album.Name)
+		var verbalTense string
+		if v.NowPlaying == "true" {
+			verbalTense = fmt.Sprintf("'m")
+		} else {
+			verbalTense = fmt.Sprintf(" was")
+		}
+
+		nowPlayingTrack = fmt.Sprintf("I%s listening to:\n%s - %s [%s]",
+			verbalTense, v.Artist.Name, v.Name, v.Album.Name)
 		break
 	}
 
