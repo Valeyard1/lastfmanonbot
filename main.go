@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/valeyard1/lastfmanonbot/lastfmanonbot"
+	tele "gopkg.in/telebot.v3"
 )
 
 var (
@@ -13,50 +16,59 @@ var (
 )
 
 func main() {
-
-	if token == "" {
-		log.Fatal("No token has been provided for bot to work. Provide the TELEGRAM_BOT_TOKEN environment variable")
+	pref := tele.Settings{
+		Token:  token,
+		Poller: &tele.LongPoller{Timeout: 10 * time.Second},
 	}
 
-	bot, err := tgbotapi.NewBotAPI(token)
+	b, err := tele.NewBot(pref)
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
+		return
 	}
 
-	bot.Debug = true
+	b.Handle("/start", func(c tele.Context) error {
+		return c.Send("Hello!")
+	})
 
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	lastfmanonbot.CreateLastfmApi()
+	b.Handle(tele.OnQuery, func(c tele.Context) error {
+		user := c.Query().Text
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-	updates := bot.GetUpdatesChan(u)
+		urls := []string{
+			lastfmanonbot.GetNowPlayingAlbumArt(user),
+		}
+		song := lastfmanonbot.GetNowPlayingSong(user)
+		artist := lastfmanonbot.GetNowPlayingArtist(user)
+		album := lastfmanonbot.GetNowPlayingAlbum(user)
+		albumURL := lastfmanonbot.GetNowPlayingAlbumURL(user)
+		verbalTense := lastfmanonbot.GetNowPlayingVerbalTense(user)
 
-	for update := range updates {
-		if update.Message == nil { // ignore any non-Message updates
-			continue
+		nowPlayingTrack := fmt.Sprintf("I%s listening to\n🎧 %s - %s [%s]",
+			verbalTense, artist, song, album)
+
+		results := make(tele.Results, len(urls)) // []tele.Result
+		for i, url := range urls {
+			result := &tele.ArticleResult{
+				Title:       song,
+				Text:        nowPlayingTrack,
+				Description: artist,
+				URL:         albumURL,
+				ThumbURL:    url,
+				HideURL:     true,
+			}
+			results[i] = result
+			// needed to set a unique string ID for each result
+			results[i].SetResultID(strconv.Itoa(i))
 		}
 
-		if !update.Message.IsCommand() { // ignore any non-command Messages
-			continue
-		}
+		return c.Answer(&tele.QueryResponse{
+			Results:   results,
+			CacheTime: 60, // a minute
+		})
 
-		// Create a new MessageConfig. We don't have text yet,
-		// so we leave it empty.
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+		// no log since it's anonymous
+	})
 
-		// Initialize LastFM Api
-		lastfmanonbot.CreateLastfmApi()
-		switch update.Message.Command() {
-		case "help":
-			msg.Text = lastfmanonbot.HelpMessage()
-		case "status":
-			msg.Text = lastfmanonbot.GetNowPlaying(update.Message.CommandArguments())
-		default:
-			msg.Text = lastfmanonbot.HelpMessage()
-		}
-
-		if _, err := bot.Send(msg); err != nil {
-			log.Panic(err)
-		}
-	}
+	b.Start()
 }

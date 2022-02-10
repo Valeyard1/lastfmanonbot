@@ -1,7 +1,6 @@
 package lastfmanonbot
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -26,28 +25,100 @@ func CreateLastfmApi() bool {
 	return true
 }
 
-func GetNowPlaying(user string) string {
-	var nowPlayingTrack string
-
+func GetNowPlayingSong(user string) string {
 	userMap := lastfm.P{
 		"user": user,
 	}
 
 	nowPlaying, _ := api.User.GetRecentTracks(userMap)
 	for _, v := range nowPlaying.Tracks {
-		var verbalTense string
-		if v.NowPlaying == "true" {
-			verbalTense = fmt.Sprintf("'m")
-		} else {
-			verbalTense = fmt.Sprintf(" was")
-		}
+		return v.Name
+	}
+	return ""
+}
 
-		nowPlayingTrack = fmt.Sprintf("I%s listening to:\n%s - %s [%s]",
-			verbalTense, v.Artist.Name, v.Name, v.Album.Name)
-		break
+func GetNowPlayingArtist(user string) string {
+	userMap := lastfm.P{
+		"user": user,
 	}
 
-	return nowPlayingTrack
+	nowPlaying, _ := api.User.GetRecentTracks(userMap)
+	for _, v := range nowPlaying.Tracks {
+		return v.Artist.Name
+	}
+	return ""
+}
+
+func GetNowPlayingAlbum(user string) string {
+	userMap := lastfm.P{
+		"user": user,
+	}
+
+	nowPlaying, _ := api.User.GetRecentTracks(userMap)
+	for _, v := range nowPlaying.Tracks {
+		return v.Album.Name
+	}
+	return ""
+}
+
+func GetNowPlayingAlbumURL(user string) string {
+	albumMap := lastfm.P{
+		"mbid": getNowPlayingAlbumMbid(user),
+	}
+
+	albumInfo, _ := api.Album.GetInfo(albumMap)
+	albumArt := albumInfo.Url
+
+	return albumArt
+}
+
+func GetNowPlayingAlbumArt(user string) string {
+	// TODO: get album art by mbid and return nil if no album art
+	// mbid := getNowPlayingAlbumMbid(user)
+
+	albumMap := lastfm.P{
+		"track":  GetNowPlayingSong(user),
+		"artist": GetNowPlayingArtist(user),
+	}
+
+	trackInfo, _ := api.Track.GetInfo(albumMap)
+	albumArt := trackInfo.Album
+
+	for _, images := range albumArt.Images {
+		if images.Size == "extralarge" {
+			return images.Url
+		}
+	}
+
+	return "none"
+}
+
+func getNowPlayingAlbumMbid(user string) string {
+	userMap := lastfm.P{
+		"user": user,
+	}
+
+	nowPlaying, _ := api.User.GetRecentTracks(userMap)
+	for _, v := range nowPlaying.Tracks {
+		return v.Album.Mbid
+	}
+	return ""
+}
+
+func GetNowPlayingVerbalTense(user string) string {
+	userMap := lastfm.P{
+		"user": user,
+	}
+
+	nowPlaying, _ := api.User.GetRecentTracks(userMap)
+	for _, v := range nowPlaying.Tracks {
+		if v.NowPlaying == "true" {
+			return "'m"
+		} else {
+			return " was"
+		}
+	}
+	return ""
 }
 
 func HelpMessage() string {
