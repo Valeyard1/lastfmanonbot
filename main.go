@@ -43,9 +43,10 @@ func main() {
 		album := lastfmanonbot.GetNowPlayingAlbum(user)
 		albumURL := lastfmanonbot.GetNowPlayingAlbumURL(user)
 		verbalTense := lastfmanonbot.GetNowPlayingVerbalTense(user)
+		tags := lastfmanonbot.GetNowPlayingSongTags(user)
 
-		nowPlayingTrack := fmt.Sprintf("I%s listening to\n🎧 %s - %s [%s]",
-			verbalTense, artist, song, album)
+		nowPlayingTrack := fmt.Sprintf("I%s listening to\n🎧 %s - %s [%s]\n\n%s",
+			verbalTense, artist, song, album, tags)
 
 		results := make(tele.Results, len(urls)) // []tele.Result
 		for i, url := range urls {

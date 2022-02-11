@@ -1,9 +1,12 @@
 package lastfmanonbot
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
+	"github.com/gosimple/slug"
 	"github.com/shkh/lastfm-go/lastfm"
 )
 
@@ -47,6 +50,33 @@ func GetNowPlayingArtist(user string) string {
 		return v.Artist.Name
 	}
 	return ""
+}
+
+func GetNowPlayingSongTags(user string) string {
+	artist := GetNowPlayingArtist(user)
+	track := GetNowPlayingSong(user)
+
+	trackMap := lastfm.P{
+		"artist":      artist,
+		"track":       track,
+		"autocorrect": "1",
+	}
+
+	trackTags, _ := api.Track.GetTopTags(trackMap)
+
+	var tagSlugs []string
+	for i, tags := range trackTags.Tags {
+		tag := slug.Make(tags.Name)
+		tag = strings.ReplaceAll(tag, "-", "_")
+		tag = fmt.Sprintf("#%s", tag)
+		tagSlugs = append(tagSlugs, tag)
+
+		if i == 2 {
+			break
+		}
+	}
+	tagListString := strings.Join(tagSlugs, " ")
+	return tagListString
 }
 
 func GetNowPlayingAlbum(user string) string {
